@@ -1,0 +1,104 @@
+[
+  {
+    "Id": "4835daea7d471171ab81f4548c1da3de2eb35d4869707b1a1cd91c47cec1993c",
+    "Names": [
+      "/pepe_serv0_run_c285d257cc02"
+    ],
+    "Image": "python:3.10",
+    "ImageID": "sha256:6bb8bdb609b697dfbb897199c2869bc47fcc9fbf7a7370494c42458e15244df9",
+    "Command": "python",
+    "Created": 1656918442,
+    "Ports": [
+         {
+            "PrivatePort": 8080,
+            "Type": "tcp"
+         }
+     ],
+    "Labels": {
+      "com.docker.compose.oneoff": "True",
+      "com.docker.compose.project": "pepe",
+      "com.docker.compose.project.config_files": "docker-compose.yml",
+      "com.docker.compose.project.working_dir": "/Users/user/pepe",
+      "com.docker.compose.service": "serv0",
+      "com.docker.compose.slug": "c285d257cc021ffc41ad656b3f49ba653a240468a6ca180a91b8b82e669c6eb",
+      "com.docker.compose.version": "1.29.2",
+      "pepe.format": "Alert"
+    },
+    "State": "running",
+    "Status": "Up 2 days",
+    "HostConfig": {
+      "NetworkMode": "default"
+    },
+    "NetworkSettings": {
+      "Networks": {
+        "bridge": {
+          "IPAMConfig": null,
+          "Links": null,
+          "Aliases": null,
+          "NetworkID": "5f124d8210ab3258a7745d1dbe497f0d53f5fefaebb0cdcb1e52cdfae1dda962",
+          "EndpointID": "ac8942a8c7f96b18612b35b244a6807078d7593efa69706ad589efde4fc70d98",
+          "Gateway": "172.19.0.1",
+          "IPAddress": "172.19.0.4",
+          "IPPrefixLen": 16,
+          "IPv6Gateway": "",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "MacAddress": "02:42:ac:13:00:04",
+          "DriverOpts": null
+        }
+      }
+    },
+    "Mounts": []
+  },
+  {
+    "Id": "35cbdd2a0beb2c18319aa4d6cd0608dc024c09e16911cf15b3cb5e13fff97840",
+    "Names": [
+      "/pepe_serv0_run_dccb646cf188"
+    ],
+    "Image": "python:3.10",
+    "ImageID": "sha256:6bb8bdb609b697dfbb897199c2869bc47fcc9fbf7a7370494c42458e15244df9",
+    "Command": "/bin/bash",
+    "Created": 1656829467,
+    "Ports": [
+         {
+            "PrivatePort": 8080,
+            "Type": "tcp"
+         }
+    ],
+    "Labels": {
+      "com.docker.compose.oneoff": "True",
+      "com.docker.compose.project": "pepe",
+      "com.docker.compose.project.config_files": "docker-compose.yml",
+      "com.docker.compose.project.working_dir": "/Users/user/pepe",
+      "com.docker.compose.service": "serv0",
+      "com.docker.compose.slug": "dccb646cf18811238f81816c267de92d4b7217dc8864e954e7720fa4b72d54",
+      "com.docker.compose.version": "1.29.2",
+      "pepe.format": "Alert"
+    },
+    "State": "running",
+    "Status": "Up 3 days",
+    "HostConfig": {
+      "NetworkMode": "default"
+    },
+    "NetworkSettings": {
+      "Networks": {
+        "bridge": {
+          "IPAMConfig": null,
+          "Links": null,
+          "Aliases": null,
+          "NetworkID": "5f124d8210ab3258a7745d1dbe497f0d53f5fefaebb0cdcb1e52cdfae1dda962",
+          "EndpointID": "afb3ae47e042af0a450335f123404ffd6de215aaa4f737a1d5e2790f4c22ba5e",
+          "Gateway": "172.19.0.1",
+          "IPAddress": "172.19.0.3",
+          "IPPrefixLen": 16,
+          "IPv6Gateway": "",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "MacAddress": "02:42:ac:13:00:03",
+          "DriverOpts": null
+        }
+      }
+    },
+    "Mounts": []
+  }
+]
