@@ -1,0 +1,11 @@
+*.so
+*.dylib
+*.test
+*.out
+access.log
+var/
+dist/
+.vscode
+.idea
+*.gpg
+go.work
