@@ -20,7 +20,7 @@ import (
 )
 
 var opts struct {
-	Port             int    `short:"p" long:"port" default:"8080" description:"port to listen"`
+	Port             int    `short:"p" long:"port" default:"9393" description:"port to listen"`
 	MaxSize          string `long:"max" env:"MAX_SIZE" default:"128K" description:"max request size"`
 	StdOutLogEnbaled bool   `long:"stdout" env:"STDOUT" description:"stdout log"`
 	AllowAll         bool    `long:"all" env:"ALLOWALL" description:"allow all logs"`
