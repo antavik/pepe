@@ -7,11 +7,8 @@ import (
 	log "github.com/go-pkgz/lgr"
 
 	"github.com/antibantique/pepe/src/discovery"
+	"github.com/antibantique/pepe/src/providers"
 )
-
-type provider interface {
-	Send(string) error
-}
 
 type Task struct {
 	RemoteAddr string
@@ -19,8 +16,8 @@ type Task struct {
 }
 
 type Provider struct {
-	Client   provider
-	Supports func(*discovery.Service) bool
+	Client providers.Client
+	Accept func(*discovery.Service) bool
 }
 
 type Processor struct {
@@ -60,7 +57,7 @@ func (p *Processor) run(tasksCh chan *Task, errorsCh chan error) {
 		}
 
 		for _, prov := range p.Providers {
-			if prov.Supports(svc) {
+			if prov.Accept(svc) {
 				wg.Add(1)
 				go func(p *Provider) {
 					defer wg.Done()

@@ -118,8 +118,8 @@ func setupProviders() (ps []*proc.Provider, err error) {
 			ps = append(
 				ps,
 				&proc.Provider{
-					Client:   tgClient,
-					Supports: func(s *discovery.Service) bool { return s.Config.TgEnabled },
+					Client: tgClient,
+					Accept: func(s *discovery.Service) bool { return s.Config.TgEnabled },
 				},
 			)
 		}
@@ -130,8 +130,8 @@ func setupProviders() (ps []*proc.Provider, err error) {
 		ps = append(
 			ps,
 			&proc.Provider{
-				Client:   providers.NewSlackClient(opts.Sl.Token, opts.Sl.Server, opts.Sl.ChatId, opts.Sl.Timeout),
-				Supports: func(s *discovery.Service) bool { return s.Config.SlEnabled },
+				Client: providers.NewSlackClient(opts.Sl.Token, opts.Sl.Server, opts.Sl.ChatId, opts.Sl.Timeout),
+				Accept: func(s *discovery.Service) bool { return s.Config.SlEnabled },
 			},
 		)
 	}
@@ -148,13 +148,13 @@ func parseSize(size string) (uint64, error) {
 		return 0, errors.New("empty value")
 	}
 
-	size = strings.ToUpper(size)
+	size = strings.ToLower(size)
 
-	for i, sfx := range []string{"K", "M", "G"} {
+	for i, sfx := range []string{"k", "m", "g"} {
 		if strings.HasSuffix(size, sfx) {
 			val, err := strconv.Atoi(size[:len(size)-1])
 			if err != nil {
-				return 0, fmt.Errorf("can't parse %s: %v", size, err)
+				return 0, fmt.Errorf("parse error %s: %v", size, err)
 			}
 			return uint64(float64(val) * math.Pow(float64(1024), float64(i+1))), nil
 		}

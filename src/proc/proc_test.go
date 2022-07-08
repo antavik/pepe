@@ -16,7 +16,7 @@ func TestInternalRun(t *testing.T) {
 		Services:  discovery.NewServiceManager(),
 		Providers: []*Provider{
 			&Provider{
-				Supports: func(*discovery.Service) bool { return true },
+				Accept: func(*discovery.Service) bool { return true },
 			},
 		},
 	}

@@ -14,6 +14,7 @@ import (
 )
 
 // source from https://github.com/umputun/reproxy
+const APIVer = "v1.22"
 
 type Docker struct {
 	DockerClient    DockerClient
@@ -120,10 +121,6 @@ func NewDockerClient(host, network string) *dockerClient {
 }
 
 func (dc *dockerClient) listContainers() ([]ContainerInfo, error) {
-	// Minimum API version that returns attached networks
-	// docs.docker.com/engine/api/version-history/#v122-api-changes
-	const APIVer = "v1.22"
-
 	resp, err := dc.client.Get(fmt.Sprintf("http://localhost/%s/containers/json", APIVer))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to docker socket, %v", err)
@@ -187,3 +184,4 @@ func (dc *dockerClient) listContainers() ([]ContainerInfo, error) {
 
 	return containers, nil
 }
+
