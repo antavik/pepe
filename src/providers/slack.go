@@ -8,20 +8,20 @@ import (
 	log "github.com/go-pkgz/lgr"
 )
 
-type SlackClient struct {
+type SlackProvider struct {
 	Bot     *sl.Client
 	Timeout time.Duration
 	ChatId  string
 }
 
-func NewSlackClient(token, apiUrl, chatId string, timeout time.Duration) *SlackClient {
-	log.Printf("[INFO] starting slack client for %s", apiUrl)
+func NewSlackProvider(token, apiUrl, chatId string, timeout time.Duration) *SlackProvider {
+	log.Printf("[INFO] starting slack provider for %s", apiUrl)
 	if timeout == 0 {
 		timeout = time.Second * 60
 	}
 
 	if token == "" {
-		return &SlackClient{
+		return &SlackProvider{
 			Bot:        nil,
 			Timeout:    timeout,
 			ChatId:     chatId,
@@ -34,19 +34,19 @@ func NewSlackClient(token, apiUrl, chatId string, timeout time.Duration) *SlackC
 		sl.OptionAPIURL(apiUrl),
 	)
 
-	return &SlackClient{
+	return &SlackProvider{
 		Bot:     bot,
 		Timeout: timeout,
 		ChatId:  chatId,
 	}
 }
 
-func (sc *SlackClient) Send(msg string) error {
-	if sc.Bot == nil || sc.ChatId == "" {
+func (sp *SlackProvider) Send(msg string) error {
+	if sp.Bot == nil || sp.ChatId == "" {
 		return nil
 	}
 
-	if err := sc.sendText(sc.ChatId, msg); err != nil {
+	if err := sp.sendText(sp.ChatId, msg); err != nil {
 		return err
 	}
 
@@ -55,8 +55,8 @@ func (sc *SlackClient) Send(msg string) error {
 	return nil
 }
 
-func (sc *SlackClient) sendText(channelId, msg string) error {
-	_, _, err := sc.Bot.PostMessage(
+func (sp *SlackProvider) sendText(channelId, msg string) error {
+	_, _, err := sp.Bot.PostMessage(
 		channelId,
 		sl.MsgOptionText(msg, false),
 		sl.MsgOptionAsUser(true),

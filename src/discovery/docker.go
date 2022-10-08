@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"io"
 	"net/http"
 	"net"
 	"regexp"
@@ -9,20 +10,17 @@ import (
 	"time"
 	"fmt"
 	"encoding/json"
+	"bufio"
 
 	log "github.com/go-pkgz/lgr"
 )
 
 // source from https://github.com/umputun/reproxy
-const APIVer = "v1.22"
+const apiVer = "v1.22"
 
 type Docker struct {
-	DockerClient    DockerClient
-	RefreshInterval time.Duration
-}
-
-type DockerClient interface {
-	listContainers() ([]ContainerInfo, error)
+	client  *dockerClient
+	refresh time.Duration
 }
 
 type ContainerInfo struct {
@@ -35,29 +33,35 @@ type ContainerInfo struct {
 	Ports  []int
 }
 
-func (d *Docker) Listen(ctx context.Context) (containersCh chan ContainerInfo) {
-	containersCh = make(chan ContainerInfo)
+func NewDocker(host, net string) *Docker {
+	return &Docker{
+		client:  NewDockerClient(host, net),
+		refresh: time.Second * 10,
+	}
+}
+
+func (d *Docker) Listen(ctx context.Context) chan ContainerInfo {
+	events := make(chan ContainerInfo)
 
 	go func() {
-		if err := d.listen(ctx, containersCh); err != nil {
+		if err := d.listen(ctx, events); err != nil {
 			log.Printf("[ERROR] unexpected docker client exit, %v", err)
 		}
 	}()
 
-	return containersCh
+	return events
 }
 
-func (d *Docker) listen(ctx context.Context, containersCh chan ContainerInfo) error {
-	ticker := time.NewTicker(d.RefreshInterval)
-	defer ticker.Stop()
-	defer close(containersCh)
-
+func (d *Docker) listen(ctx context.Context, events chan ContainerInfo) error {
 	saved := make(map[string]ContainerInfo)
+	ticker := time.NewTicker(d.refresh)
+	defer ticker.Stop()
+	defer close(events)
 
 	update := func() {
-		containers, err := d.DockerClient.listContainers()
+		containers, err := d.client.ListContainers()
 		if err != nil {
-			log.Printf("[WARN] failed to list containers, %v", err)
+			log.Printf("[WARN] failed to fetch containers info, %v", err)
 			return
 		}
 
@@ -80,7 +84,7 @@ func (d *Docker) listen(ctx context.Context, containersCh chan ContainerInfo) er
 			}
 			for _, c := range containers {
 				saved[c.Id] = c
-				containersCh <- c
+				events <- c
 			}
 		}
 	}
@@ -88,7 +92,7 @@ func (d *Docker) listen(ctx context.Context, containersCh chan ContainerInfo) er
 	update()
 	for {
 		select {
-		case <- ticker.C:
+		case <-ticker.C:
 			update()
 		case <-ctx.Done():
 			return ctx.Err()
@@ -96,14 +100,44 @@ func (d *Docker) listen(ctx context.Context, containersCh chan ContainerInfo) er
 	}
 }
 
+func (d *Docker) FollowLogs(contId string, stdout, stderr bool) chan string {
+	log.Printf("[DEBUG] start following logs of container %s", contId)
+
+	follow := true
+
+	body, err := d.client.Logs(contId, follow, stdout, stderr)
+	if err != nil {
+		log.Printf("[ERROR] docker api error, %v", err)
+		return nil
+	}
+
+	logCh := make(chan string)
+
+	go func() {
+		defer body.Close()
+		defer close(logCh)
+
+		s := bufio.NewScanner(body)
+		for s.Scan() {
+			logCh <- s.Text()
+		}
+		if err := s.Err(); err != nil {
+			log.Printf("[ERROR] docker logs streaming, %v", err)
+		}
+	}()
+
+	return logCh
+}
+
+// low level docker client
 type dockerClient struct {
 	client  http.Client
 	network string
 }
 
 func NewDockerClient(host, network string) *dockerClient {
-	schemaRegex := regexp.MustCompile("^(?:([a-z0-9]+)://)?(.*)$")
-	parts := schemaRegex.FindStringSubmatch(host)
+	re := regexp.MustCompile(`^(?:([a-z0-9]+)://)?(.*)$`)
+	parts := re.FindStringSubmatch(host)
 	proto, addr := parts[1], parts[2]
 
 	log.Printf("[DEBUG] configuring docker client to connect to %s via %s", addr, proto)
@@ -114,16 +148,15 @@ func NewDockerClient(host, network string) *dockerClient {
 				return net.Dial(proto, addr)
 			},
 		},
-		Timeout: time.Second * 5,
 	}
 
 	return &dockerClient{client, network}
 }
 
-func (dc *dockerClient) listContainers() ([]ContainerInfo, error) {
-	resp, err := dc.client.Get(fmt.Sprintf("http://localhost/%s/containers/json", APIVer))
+func (dc *dockerClient) ListContainers() ([]ContainerInfo, error) {
+	resp, err := dc.client.Get(fmt.Sprintf("http://localhost/%s/containers/json", apiVer))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to docker socket, %v", err)
+		return nil, fmt.Errorf("failed to connect to docker socket to fetch containers info: %v", err)
 	}
 
 	defer resp.Body.Close()
@@ -185,3 +218,27 @@ func (dc *dockerClient) listContainers() ([]ContainerInfo, error) {
 	return containers, nil
 }
 
+func (dc *dockerClient) Logs(contId string, follow, stdout, stderr bool) (io.ReadCloser, error) {
+	url := fmt.Sprintf(
+		"http://localhost/%s/containers/%s/logs?follow=%t&stdout=%t&stderr=%t&since=%d",
+		apiVer, contId, follow, stdout, stderr, time.Now().Unix(),
+	)
+	resp, err := dc.client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to docker socket to follow logs: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		e := struct {
+			Message string `json:"message"`
+		}{}
+
+		if err := json.NewDecoder(resp.Body).Decode(&e); err != nil {
+			return nil, fmt.Errorf("failed to parse error from docker daemon: %v", err)
+		}
+
+		return nil, fmt.Errorf("unexpected error from docker daemon: %s", e.Message)
+	}
+
+	return resp.Body, nil
+}

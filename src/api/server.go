@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"context"
 	"time"
+	"strings"
+	"encoding/json"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
 
 	"github.com/antibantique/pepe/src/proc"
+	"github.com/antibantique/pepe/src/config"
+	"github.com/antibantique/pepe/src/source"
 )
 
 type Server struct {
@@ -18,7 +22,8 @@ type Server struct {
 	MaxBodySize      int64
 	StdOutLogEnbaled bool
 	Version          string
-	TasksCh          chan *proc.Task
+	TaskCh           chan *proc.Task
+	CommonConf       config.C
 
 	httpServer       *http.Server
 }
@@ -29,8 +34,6 @@ func (s *Server) Run(ctx context.Context) {
 	var err error
 
 	go func() {
-		defer close(s.TasksCh)
-
 		<- ctx.Done()
 		if s.httpServer != nil {
 			if clsErr := s.httpServer.Close(); clsErr != nil {
@@ -63,7 +66,7 @@ func (s *Server) Run(ctx context.Context) {
 }
 
 func (s *Server) log(w http.ResponseWriter, r *http.Request) {
-	var logData map[string][]string
+	msg := make(map[string]string)
 
 	switch r.Header.Get("Content-Type") {
 	case "application/x-www-form-urlencoded":
@@ -72,17 +75,28 @@ func (s *Server) log(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		logData = r.PostForm
+		for k, v := range r.PostForm {
+			msg[k] = strings.Join(v, ", ")
+		}
+
+	case "application/json":
+		if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
+			rest.SendErrorJSON(w, r, log.Default(), http.StatusInternalServerError, err, "failed to parse json")
+			return
+		}
+
 	default:
 		rest.SendErrorJSON(w, r, log.Default(), http.StatusUnsupportedMediaType, fmt.Errorf("content type error"), "unsupported content type")
 		return
 	}
 
 	go func() {
-		s.TasksCh <- &proc.Task{
-			RemoteAddr: r.RemoteAddr,
-			LogData:    logData,
-		}
+		parts := strings.Split(r.RemoteAddr, ":")
+		ip := parts[0]
+
+		src := &source.S{ Ip: ip, Config: &s.CommonConf, }
+
+		s.TaskCh <- &proc.Task{ Src: src, Log: msg, }
 	}()
 
 	rest.RenderJSON(w, rest.JSON{"status": "ok"})

@@ -1,5 +1,5 @@
 package providers
 
-type Client interface {
+type Provider interface {
 	Send(string) error
 }

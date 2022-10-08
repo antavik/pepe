@@ -8,11 +8,11 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-func TestNewTelegramClient(t *testing.T) {
+func TestNewTelegramProvider(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client, err := NewTelegramClient(ctx, "", "", "", 0)
+	client, err := NewTelegramProvider(ctx, "", "", "", 0)
 
 	assert.NoError(t, err)
 	assert.Nil(t, client.Bot, "empty token, bot should be nil")
@@ -20,9 +20,9 @@ func TestNewTelegramClient(t *testing.T) {
 }
 
 func TestTelegramSend(t *testing.T) {
-	tests := []TelegramClient{
-		TelegramClient{},
-		TelegramClient{Bot: &tb.Bot{}},
+	tests := []TelegramProvider{
+		TelegramProvider{},
+		TelegramProvider{Bot: &tb.Bot{}},
 	}
 
 	for _, tt := range tests {
@@ -37,7 +37,7 @@ func TestTelegramSend_closeLimiter(t *testing.T) {
 
 	limiter := runLimiter(ctx)
 
-	client := TelegramClient{
+	client := TelegramProvider{
 		Bot:    &tb.Bot{},
 		ChatId: "test",
 

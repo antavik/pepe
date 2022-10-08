@@ -1,0 +1,6 @@
+0 DEBUG debug
+1 INFO info
+2 WARNING warning
+3 ERROR error
+4 CRITICAL critical
+5 PANIC panic

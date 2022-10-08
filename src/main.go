@@ -9,21 +9,27 @@ import (
 	"strings"
 	"strconv"
 	"math"
+	"text/template"
+	"regexp"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/antibantique/pepe/src/api"
+	"github.com/antibantique/pepe/src/config"
 	"github.com/antibantique/pepe/src/proc"
 	"github.com/antibantique/pepe/src/providers"
 	"github.com/antibantique/pepe/src/discovery"
+	"github.com/antibantique/pepe/src/discovery/manager"
+	"github.com/antibantique/pepe/src/source"
 )
 
 var opts struct {
 	Port             int    `short:"p" long:"port" default:"9393" description:"port to listen"`
 	MaxSize          string `long:"max" env:"MAX_SIZE" default:"128K" description:"max request size"`
 	StdOutLogEnbaled bool   `long:"stdout" env:"STDOUT" description:"stdout log"`
-	AllowAll         bool    `long:"all" env:"ALLOWALL" description:"allow all logs"`
+	Template         string `long:"template" env:"MSG_TEMPLATE" default:"🔴 Alert\n{{ . }}" description:"message template"`
+	Regex            string `long:"regex" env:"REGEX" default:"ERROR|CRITICAL|FATAL" description:"regex pattern"`
 
 	Docker struct {
 		Host    string `long:"host" env:"HOST" default:"unix:///var/run/docker.sock" description:"docker host"`
@@ -31,17 +37,17 @@ var opts struct {
 	} `group:"docker" namespace:"docker" env-namespace:"DOCKER"`
 
 	Tg struct {
-		Token     string        `long:"token" env:"TOKEN" default:"" description:"telegram token"`
-		Server    string        `long:"server" env:"SERVER" default:"https://api.telegram.org" description:"telebram bot api server"`
-		Timeout   time.Duration `long:"timeout" env:"TIMEOUT" default:"1m" description:"telegram timeout"`
-		ChatId string           `long:"chat" env:"CHAT" description:"telegram chat id"`
+		Token   string        `long:"token" env:"TOKEN" default:"" description:"telegram token"`
+		Server  string        `long:"server" env:"SERVER" default:"https://api.telegram.org" description:"telebram bot api server"`
+		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"1m" description:"telegram timeout"`
+		ChatId  string        `long:"chat" env:"CHAT" description:"telegram chat id"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
 
 	Sl struct {
-		Token     string        `long:"token" env:"TOKEN" default:"" description:"slack token"`
-		Server    string        `long:"server" env:"SERVER" default:"https://slack.com/api/" description:"slack bot api server"`
-		Timeout   time.Duration `long:"timeout" env:"TIMEOUT" default:"1m" description:"slack timeout"`
-		ChatId string           `long:"chat" env:"CHAT" description:"slack chat id"`
+		Token   string        `long:"token" env:"TOKEN" default:"" description:"slack token"`
+		Server  string        `long:"server" env:"SERVER" default:"https://slack.com/api/" description:"slack bot api server"`
+		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"1m" description:"slack timeout"`
+		ChatId  string        `long:"chat" env:"CHAT" description:"slack chat id"`
 	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
 
 	Dbg bool `long:"debug" env:"DEBUG" description:"debug mode"`
@@ -62,32 +68,44 @@ func main() {
 
 	maxSize, err := parseSize(opts.MaxSize)
 	if err != nil {
-		log.Printf("[FATAL] invalid max body size value, %v", err)
+		log.Printf("[FATAL] invalid max body size value: %v", err)
+	}
+
+	template, err := template.New("default_template").Parse(opts.Template)
+	if err != nil {
+		log.Printf("[FATAL] invalid message template: %v", err)
+	}
+
+	regex, err := regexp.Compile(opts.Regex)
+	if err != nil {
+		log.Printf("[FATAL] invalid regex pattern: %v", err)
 	}
 
 	provs, err := setupProviders()
 	if err != nil {
-		log.Printf("[FATAL] provider configuration error, %v", err)
+		log.Printf("[FATAL] provider configuration error: %v", err)
 	}
 
-	// setup docker
-	docker := discovery.Docker{
-		DockerClient:    discovery.NewDockerClient(opts.Docker.Host, opts.Docker.Network),
-		RefreshInterval: time.Second * 10,
+	config := config.C{
+		Template:  template,
+		Re:        regex,
+		TgEnabled: func() bool {
+			_, ok := provs["telegram"]
+			return ok
+		}(),
+		SlEnabled: func() bool {
+			_, ok := provs["slack"]
+			return ok
+		}(),
 	}
-	containersCh := docker.Listen(context.Background())
 
-	// run manager to process running containers to services
-	serviceMan := discovery.NewServiceManager()
-	go serviceMan.Run(containersCh)
+	processor := proc.Proc{ Providers: provs, }
+	taskCh := processor.Run()
 
-	// run task processor
-	processor := proc.Processor{
-		Services:  serviceMan,
-		Providers: provs,
-		AllowAll:  opts.AllowAll,
-	}
-	tasksCh := processor.Run()
+	docker := discovery.NewDocker(opts.Docker.Host, opts.Docker.Network)
+
+	srcMan := manager.New(docker, taskCh, config)
+	srcMan.Run(context.Background())
 
 	// setup and run api server
 	server := api.Server{
@@ -95,7 +113,8 @@ func main() {
 		MaxBodySize:      int64(maxSize),
 		StdOutLogEnbaled: opts.StdOutLogEnbaled,
 		Version:          version,
-		TasksCh:          tasksCh,
+		TaskCh:           taskCh,
+		CommonConf:       config,
 	}
 	server.Run(context.Background())
 }
@@ -108,32 +127,28 @@ func setupLog() {
 	log.Setup(log.Msec, log.LevelBraces)
 }
 
-func setupProviders() (ps []*proc.Provider, err error) {
+func setupProviders() (map[string]*proc.Provider, error) {
+	ps := make(map[string]*proc.Provider)
+
 	// setup telegram client
 	if opts.Tg.Token != "" {
-		tgClient, err := providers.NewTelegramClient(context.Background(), opts.Tg.Token, opts.Tg.Server, opts.Tg.ChatId, opts.Tg.Timeout)
+		tgProvider, err := providers.NewTelegramProvider(context.Background(), opts.Tg.Token, opts.Tg.Server, opts.Tg.ChatId, opts.Tg.Timeout)
 		if err != nil {
-			log.Printf("[ERROR] setup telegram client error, %v", err)
+			log.Printf("[ERROR] setup telegram client error: %v", err)
 		} else {
-			ps = append(
-				ps,
-				&proc.Provider{
-					Client: tgClient,
-					Accept: func(s *discovery.Service) bool { return s.Config.TgEnabled },
-				},
-			)
+			ps["telegram"] = &proc.Provider{
+				Client: tgProvider,
+				Accept: func(s *source.S) bool { return s.Config.TgEnabled },
+			}
 		}
 	}
 
 	// setup slack client
 	if opts.Sl.Token != "" {
-		ps = append(
-			ps,
-			&proc.Provider{
-				Client: providers.NewSlackClient(opts.Sl.Token, opts.Sl.Server, opts.Sl.ChatId, opts.Sl.Timeout),
-				Accept: func(s *discovery.Service) bool { return s.Config.SlEnabled },
-			},
-		)
+		ps["slack"] = &proc.Provider{
+			Client: providers.NewSlackProvider(opts.Sl.Token, opts.Sl.Server, opts.Sl.ChatId, opts.Sl.Timeout),
+			Accept: func(s *source.S) bool { return s.Config.SlEnabled },
+		}
 	}
 
 	if len(ps) == 0 {
@@ -154,7 +169,7 @@ func parseSize(size string) (uint64, error) {
 		if strings.HasSuffix(size, sfx) {
 			val, err := strconv.Atoi(size[:len(size)-1])
 			if err != nil {
-				return 0, fmt.Errorf("parse error %s: %v", size, err)
+				return 0, fmt.Errorf("parse error %s: %w", size, err)
 			}
 			return uint64(float64(val) * math.Pow(float64(1024), float64(i+1))), nil
 		}

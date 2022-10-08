@@ -5,21 +5,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/antibantique/pepe/src/discovery"
+	"github.com/antibantique/pepe/src/source"
 )
 
 func TestInternalRun(t *testing.T) {
 	tasksCh := make(chan *Task)
 	errorsCh := make(chan error)
-
-	processor := Processor{
-		Services:  discovery.NewServiceManager(),
-		Providers: []*Provider{
-			&Provider{
-				Accept: func(*discovery.Service) bool { return true },
-			},
+	provs := map[string]*Provider{
+		"telegrma": &Provider{
+			Accept: func(*source.S) bool { return true },
 		},
 	}
+
+	processor := Proc{ Providers: provs, }
 
 	go processor.run(tasksCh, errorsCh)
 	close(tasksCh)

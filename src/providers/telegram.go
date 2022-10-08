@@ -11,27 +11,28 @@ import (
 	log "github.com/go-pkgz/lgr"
 )
 
-type TelegramClient struct {
+type TelegramProvider struct {
 	Bot     *tb.Bot
 	Timeout time.Duration
-	ChatId string
+	ChatId  string
 
-	limiter   chan time.Time
+	limiter chan time.Time
 }
 
-func NewTelegramClient(ctx context.Context, token, apiUrl, chatId string, timeout time.Duration) (*TelegramClient, error) {
-	log.Printf("[INFO] starting telegram client for %s", apiUrl)
+func NewTelegramProvider(ctx context.Context, token, apiUrl, chatId string, timeout time.Duration) (*TelegramProvider, error) {
+	log.Printf("[INFO] starting telegram provider for %s", apiUrl)
+
 	if timeout == 0 {
-		timeout = time.Second * 60
+		timeout = time.Second * 10
 	}
 
 	limiter := runLimiter(ctx)
 
 	if token == "" {
-		return &TelegramClient{
+		return &TelegramProvider{
 			Bot:     nil,
 			Timeout: timeout,
-			ChatId: chatId,
+			ChatId:  chatId,
 
 			limiter: limiter,
 		}, nil
@@ -46,28 +47,26 @@ func NewTelegramClient(ctx context.Context, token, apiUrl, chatId string, timeou
 		return nil, err
 	}
 
-	client := TelegramClient{
+	return &TelegramProvider{
 		Bot:     bot,
 		Timeout: timeout,
 		ChatId:  chatId,
 
 		limiter: limiter,
-	}
-
-	return &client, nil
+	}, nil
 }
 
-func (tc TelegramClient) Send(msg string) error {
-	if tc.Bot == nil || tc.ChatId == "" {
+func (tp TelegramProvider) Send(msg string) error {
+	if tp.Bot == nil || tp.ChatId == "" {
 		return nil
 	}
 
-	_, opened := <-tc.limiter
+	_, opened := <-tp.limiter
 	if !opened {
 		return fmt.Errorf("limiter not working")
 	}
 
-	if err := tc.sendText(tc.ChatId, msg); err != nil {
+	if err := tp.sendText(tp.ChatId, msg); err != nil {
 		return err
 	}
 
@@ -76,8 +75,8 @@ func (tc TelegramClient) Send(msg string) error {
 	return nil
 }
 
-func (tc TelegramClient) sendText(channelId, msg string) error {
-	_, err := tc.Bot.Send(
+func (tp TelegramProvider) sendText(channelId, msg string) error {
+	_, err := tp.Bot.Send(
 		recipient{chatId: channelId},
 		msg,
 		tb.ModeDefault,
@@ -104,7 +103,7 @@ func runLimiter(ctx context.Context) chan time.Time {
 	limiter <- time.Now()
 
 	go func() {
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(time.Second * 2)
 		defer ticker.Stop()
 		defer close(limiter)
 
