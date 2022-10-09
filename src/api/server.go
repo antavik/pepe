@@ -96,7 +96,7 @@ func (s *Server) log(w http.ResponseWriter, r *http.Request) {
 
 		src := &source.S{ Ip: ip, Config: &s.CommonConf, }
 
-		s.TaskCh <- &proc.Task{ Src: src, Log: msg, }
+		s.TaskCh <- &proc.Task{ Src: src, RawLog: msg, }
 	}()
 
 	rest.RenderJSON(w, rest.JSON{"status": "ok"})

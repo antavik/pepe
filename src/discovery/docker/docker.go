@@ -1,4 +1,4 @@
-package discovery
+package docker
 
 import (
 	"io"
@@ -33,10 +33,10 @@ type ContainerInfo struct {
 	Ports  []int
 }
 
-func NewDocker(host, net string) *Docker {
+func New(host, net string) *Docker {
 	return &Docker{
 		client:  NewDockerClient(host, net),
-		refresh: time.Second * 10,
+		refresh: time.Second * 5,
 	}
 }
 
@@ -77,7 +77,7 @@ func (d *Docker) listen(ctx context.Context, events chan ContainerInfo) error {
 		}
 
 		if refresh {
-			log.Printf("[INFO] found changes in running containers")
+			log.Printf("[DEBUG] found changes in running containers")
 
 			for k := range saved {
 				delete(saved, k)
@@ -101,11 +101,9 @@ func (d *Docker) listen(ctx context.Context, events chan ContainerInfo) error {
 }
 
 func (d *Docker) FollowLogs(contId string, stdout, stderr bool) chan string {
-	log.Printf("[DEBUG] start following logs of container %s", contId)
-
 	follow := true
 
-	body, err := d.client.Logs(contId, follow, stdout, stderr)
+	stream, err := d.client.Logs(contId, follow, stdout, stderr)
 	if err != nil {
 		log.Printf("[ERROR] docker api error, %v", err)
 		return nil
@@ -114,16 +112,20 @@ func (d *Docker) FollowLogs(contId string, stdout, stderr bool) chan string {
 	logCh := make(chan string)
 
 	go func() {
-		defer body.Close()
+		log.Printf("[DEBUG] start following logs of container %s", contId)
+
+		defer stream.Close()
 		defer close(logCh)
 
-		s := bufio.NewScanner(body)
+		s := bufio.NewScanner(NewLogReader(stream))
 		for s.Scan() {
 			logCh <- s.Text()
 		}
 		if err := s.Err(); err != nil {
 			log.Printf("[ERROR] docker logs streaming, %v", err)
 		}
+
+		log.Printf("[DEBUG] stop following logs of container %s", contId)
 	}()
 
 	return logCh
@@ -154,7 +156,8 @@ func NewDockerClient(host, network string) *dockerClient {
 }
 
 func (dc *dockerClient) ListContainers() ([]ContainerInfo, error) {
-	resp, err := dc.client.Get(fmt.Sprintf("http://localhost/%s/containers/json", apiVer))
+	url := fmt.Sprintf("http://localhost/%s/containers/json?all=true", apiVer)
+	resp, err := dc.client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to docker socket to fetch containers info: %v", err)
 	}

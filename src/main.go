@@ -19,7 +19,7 @@ import (
 	"github.com/antibantique/pepe/src/config"
 	"github.com/antibantique/pepe/src/proc"
 	"github.com/antibantique/pepe/src/providers"
-	"github.com/antibantique/pepe/src/discovery"
+	"github.com/antibantique/pepe/src/discovery/docker"
 	"github.com/antibantique/pepe/src/discovery/manager"
 	"github.com/antibantique/pepe/src/source"
 )
@@ -102,7 +102,7 @@ func main() {
 	processor := proc.Proc{ Providers: provs, }
 	taskCh := processor.Run()
 
-	docker := discovery.NewDocker(opts.Docker.Host, opts.Docker.Network)
+	docker := docker.New(opts.Docker.Host, opts.Docker.Network)
 
 	srcMan := manager.New(docker, taskCh, config)
 	srcMan.Run(context.Background())

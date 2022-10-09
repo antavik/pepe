@@ -9,12 +9,12 @@ import (
 func TestMakeContainerConfig(t *testing.T) {
 	commonConf := C{}
 	labels := map[string]string{
-		"pepe.format":        "test",
+		"pepe.template":        "test",
 		"pepe.telegram":      "false",
 		"pepe.slack":         "false",
 		"pepe.stdout":        "true",
 		"pepe.stderr":        "true",
-		"pepe.regexp":        "INFO",
+		"pepe.regex":         "INFO",
 		"test.test":          "test",
 	}
 

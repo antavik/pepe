@@ -37,7 +37,7 @@ func MakeContainerConfig(name string, commonConf C, labels map[string]string) *C
 		parts := strings.Split(k, ".")
 		conf := parts[1]
 		switch conf {
-		case "format":
+		case "template":
 			template, err := template.New(fmt.Sprintf("%s_template", name)).Parse(v)
 			if err != nil {
 				log.Printf("[WARNING] template parse error for %s: %v", name, err)
@@ -77,7 +77,7 @@ func MakeContainerConfig(name string, commonConf C, labels map[string]string) *C
 			}
 			c.Stderr = enabled
 
-		case "regexp":
+		case "regex":
 			re, err := regexp.Compile(v)
 			if err != nil {
 				log.Printf("[WARNING] stream_regexp opt parse error for %s: %v", name, err)

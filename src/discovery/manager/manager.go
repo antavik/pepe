@@ -6,18 +6,18 @@ import (
 	"github.com/antibantique/pepe/src/proc"
 	"github.com/antibantique/pepe/src/config"
 	"github.com/antibantique/pepe/src/source"
-	"github.com/antibantique/pepe/src/discovery"
+	"github.com/antibantique/pepe/src/discovery/docker"
 )
 
 type Manager struct {
-	Docker     *discovery.Docker
+	Docker     *docker.Docker
 	TaskCh     chan *proc.Task
 	CommonConf config.C
 
 	registry   *Registry
 }
 
-func New(d *discovery.Docker, tCh chan *proc.Task, commonC config.C) *Manager {
+func New(d *docker.Docker, tCh chan *proc.Task, commonC config.C) *Manager {
 	return &Manager{
 		Docker:     d,
 		TaskCh:     tCh,
@@ -33,12 +33,7 @@ func (m *Manager) Run(ctx context.Context) {
 
 func (m *Manager) listenDocker(ctx context.Context) {
 	for container := range m.Docker.Listen(ctx) {
-		if container.State != "running" {
-			m.registry.Del(container.Id)
-			continue
-		}
-
-		if container.Id == "" {
+		if container.State != "running" || container.Id == "" {
 			continue
 		}
 
@@ -69,8 +64,10 @@ func (m *Manager) harvest(s *source.S) {
 		}
 
 		m.TaskCh <- &proc.Task{
-			Src: s,
-			Log: map[string]string{"Log": log},
+			Src:    s,
+			RawLog: map[string]string{"": log},
 		}
 	}
+
+	m.registry.Del(s.Id)
 }
