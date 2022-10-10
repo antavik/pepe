@@ -12,17 +12,13 @@ type Proc struct {
 
 func (p *Proc) Run() chan *Task {
 	taskCh := make(chan *Task)
-	errorCh := make(chan error)
 
-	go p.trackErr(errorCh)
-	go p.run(taskCh, errorCh)
+	go p.run(taskCh)
 
 	return taskCh
 }
 
-func (p *Proc) run(taskCh chan *Task, errorsCh chan error) {
-	defer close(errorsCh)
-
+func (p *Proc) run(taskCh chan *Task) {
 	var wg sync.WaitGroup
 
 	for task := range taskCh {
@@ -41,18 +37,13 @@ func (p *Proc) run(taskCh chan *Task, errorsCh chan error) {
 
 			go func(p *Provider) {
 				defer wg.Done()
-				errorsCh <- p.Client.Send(msg)
+
+				if err := p.Client.Send(msg); err != nil {
+					log.Printf("[ERROR] error send message, %v", err)
+				}
 			}(prov)
 		}
 
 		wg.Wait()
-	}
-}
-
-func (p *Proc) trackErr(errorCh chan error) {
-	for err := range errorCh {
-		if err != nil {
-			log.Printf("[ERROR] error send message, %v", err)
-		}
 	}
 }
