@@ -6,38 +6,35 @@ import (
 	"fmt"
 )
 
-type facade struct {
+type formatData struct {
 	*Task
 	Log string
 }
 
-func NewFacade(t *Task) *facade {
+func newFormatData(t *Task) *formatData {
 	var strs []string
-	var log string
 
 	for k, v := range t.RawLog {
 		v := strings.TrimSpace(v)
 
 		if k == "" {
-			log = v
+			strs = append(strs, v)
 		} else {
-			log = fmt.Sprintf("%s: %s", k, v)
+			strs = append(strs, fmt.Sprintf("%s: %s", k, v))
 		}
-
-		strs = append(strs, log)
 	}
 
-	return &facade{ t, strings.Join(strs, ", "), }
+	return &formatData{ t, strings.Join(strs, ", "), }
 }
 
-func (f facade) String() string {
+func (f formatData) String() string {
 	return fmt.Sprintf("Source: %s\nLog: %s", *f.Src, f.Log)
 }
 
 func Format(t *Task) (string, error) {
 	var b bytes.Buffer
 
-	if err := t.Src.Config.Template.Execute(&b, NewFacade(t)); err != nil {
+	if err := t.Src.Config.Template.Execute(&b, newFormatData(t)); err != nil {
 		return "", err
 	}
 

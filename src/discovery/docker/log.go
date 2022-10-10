@@ -21,12 +21,12 @@ const (
 	SizeByteStartIndex = 4
 	SizeByteStopIndex  = SizeByteStartIndex + 4
 
-	initBufLen  = 1024 * 2
-	maxLogLen   = 1024 * 64
+	initBufSize  = 1024 * 1
+	maxLogLen    = 1024 * 8
 )
 
 type reader struct {
-	r io.Reader // original reader
+	r io.Reader
 
 	// reader state
 	begin     bool
@@ -40,7 +40,7 @@ func NewLogReader(r io.Reader) io.Reader {
 	return &reader{
 		r:         r,
 		headerBuf: make([]byte, headerLen),
-		buf:       make([]byte, initBufLen),
+		buf:       make([]byte, initBufSize),
 	}
 }
 
@@ -52,7 +52,7 @@ func (r *reader) Read(p []byte) (int, error) {
 		r.begin = true
 	}
 
-	n, err := r.readLog(p) // serve from buf
+	n, err := r.readLog(p)
 	if err == io.EOF {
 		err = nil
 		r.begin = false
@@ -78,15 +78,15 @@ func (r *reader) parse() error {
 		case io.EOF:
 			return err // end of the underlying logs stream
 		case io.ErrUnexpectedEOF:
-			return fmt.Errorf("docker log corrupted prefix. read %d bytes", n)
+			return fmt.Errorf("corrupted prefix, read %d bytes", n)
 		default:
-			return fmt.Errorf("docker log error reading prefix: %v", err)
+			return fmt.Errorf("error reading prefix: %v", err)
 		}
 	}
 
 	size := int(binary.BigEndian.Uint32(r.headerBuf[SizeByteStartIndex:SizeByteStopIndex]))
 	if size > maxLogLen { // safeguard to prevent reading garbage
-		return fmt.Errorf("docker log parsed too large: %d (max: %d)", size, maxLogLen)
+		return fmt.Errorf("parsed log too large: %d (max: %d)", size, maxLogLen)
 	}
 
 	// grow buf if necessary
@@ -98,9 +98,9 @@ func (r *reader) parse() error {
 	if m, err := io.ReadFull(r.r, r.buf[:size]); err != nil {
 		switch err {
 		case io.EOF, io.ErrUnexpectedEOF:
-			return fmt.Errorf("docker log corrupt message read %d out of %d bytes: %v", m, size, err)
+			return fmt.Errorf("corrupt message read %d out of %d bytes: %v", m, size, err)
 		default:
-			return fmt.Errorf("docker log failed to read message: %v", err)
+			return fmt.Errorf("failed to read message: %v", err)
 		}
 	}
 

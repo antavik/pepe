@@ -94,9 +94,10 @@ func (s *Server) log(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(r.RemoteAddr, ":")
 		ip := parts[0]
 
-		src := &source.S{ Ip: ip, Config: &s.CommonConf, }
-
-		s.TaskCh <- &proc.Task{ Src: src, RawLog: msg, }
+		s.TaskCh <- &proc.Task{
+			Src:    &source.S{ Ip: ip, Config: &s.CommonConf, },
+			RawLog: msg,
+		}
 	}()
 
 	rest.RenderJSON(w, rest.JSON{"status": "ok"})
