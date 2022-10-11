@@ -53,8 +53,8 @@ func (d *Docker) Listen(ctx context.Context) chan ContainerInfo {
 }
 
 func (d *Docker) listen(ctx context.Context, events chan ContainerInfo) error {
-	saved := make(map[string]ContainerInfo)
 	ticker := time.NewTicker(d.refresh)
+
 	defer ticker.Stop()
 	defer close(events)
 
@@ -65,27 +65,8 @@ func (d *Docker) listen(ctx context.Context, events chan ContainerInfo) error {
 			return
 		}
 
-		refresh := false
-
 		for _, c := range containers {
-			old, exists := saved[c.Id]
-
-			if !exists || c.Ip != old.Ip || c.State != old.State || !c.Ts.Equal(old.Ts) {
-				refresh = true
-				break
-			}
-		}
-
-		if refresh {
-			log.Printf("[DEBUG] found changes in running containers")
-
-			for k := range saved {
-				delete(saved, k)
-			}
-			for _, c := range containers {
-				saved[c.Id] = c
-				events <- c
-			}
+			events <- c
 		}
 	}
 
