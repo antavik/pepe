@@ -24,7 +24,7 @@ func newFormatData(t *Task) *formatData {
 		}
 	}
 
-	return &formatData{ t, strings.Join(strs, ", "), }
+	return &formatData{ t, strings.Join(strs, ", ") }
 }
 
 func (f formatData) String() string {

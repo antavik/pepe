@@ -7,13 +7,13 @@ import (
 	sl "github.com/slack-go/slack"
 )
 
-func TestNewSlackProvider_EmptyToken(t *testing.T) {
+func TestNewSlackProvider(t *testing.T) {
 	c := NewSlackProvider("", "", "", 0)
 
 	assert.Nil(t, c.Bot)
 }
 
-func TestSlackSend_BotNilOrEmptyChannelId(t *testing.T) {
+func TestSlackSend(t *testing.T) {
 	tests := []SlackProvider{
 		SlackProvider{nil,          42, ""},
 		SlackProvider{&sl.Client{}, 42, ""},

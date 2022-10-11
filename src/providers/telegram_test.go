@@ -20,37 +20,40 @@ func TestNewTelegramProvider(t *testing.T) {
 }
 
 func TestTelegramSend(t *testing.T) {
-	tests := []TelegramProvider{
-		TelegramProvider{},
-		TelegramProvider{Bot: &tb.Bot{}},
+	// bot nil or empty channel id
+	{
+		tests := []TelegramProvider{
+			TelegramProvider{},
+			TelegramProvider{Bot: &tb.Bot{}},
+		}
+
+		for _, tt := range tests {
+			err := tt.Send("")
+
+			assert.Nil(t, err, "bot nil or empty chanId, send return nil")
+		}
 	}
+	// close limiter
+	{
+		ctx, cancel := context.WithCancel(context.Background())
 
-	for _, tt := range tests {
-		err := tt.Send("")
+		limiter := runLimiter(ctx)
 
-		assert.Nil(t, err, "bot nil or empty chanId, send return nil")
+		client := TelegramProvider{
+			Bot:    &tb.Bot{},
+			ChatId: "test",
+
+			limiter: limiter,
+		}
+
+		// close and empty limiter
+		cancel()
+		<-limiter
+
+		err := client.Send("")
+
+		assert.Error(t, err)
 	}
-}
-
-func TestTelegramSend_closeLimiter(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	limiter := runLimiter(ctx)
-
-	client := TelegramProvider{
-		Bot:    &tb.Bot{},
-		ChatId: "test",
-
-		limiter: limiter,
-	}
-
-	// close and empty limiter
-	cancel()
-	<-limiter
-
-	err := client.Send("")
-
-	assert.Error(t, err)
 }
 
 func TestRecipient(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 func TestGet(t *testing.T) {
 	// get by valid key
 	{
-		src := &source.S{ Ip: "0.0.0.0", Config: &config.C{}, }
+		src := &source.S{ Ip: "0.0.0.0", Config: &config.C{} }
 
 		r := NewRegistry()
 		r.Put("key", src)
@@ -36,7 +36,7 @@ func TestGet(t *testing.T) {
 func TestDel(t *testing.T) {
 	// del valid key
 	{
-		src := &source.S{ Ip: "0.0.0.0", Config: &config.C{}, }
+		src := &source.S{ Ip: "0.0.0.0", Config: &config.C{} }
 
 		r := NewRegistry()
 		r.Put("key", src)

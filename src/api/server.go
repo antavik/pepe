@@ -95,7 +95,7 @@ func (s *Server) log(w http.ResponseWriter, r *http.Request) {
 		ip := parts[0]
 
 		s.TaskCh <- &proc.Task{
-			Src:    &source.S{ Ip: ip, Config: &s.CommonConf, },
+			Src:    &source.S{ Ip: ip, Config: &s.CommonConf },
 			RawLog: msg,
 		}
 	}()

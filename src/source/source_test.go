@@ -12,9 +12,9 @@ func TestString(t *testing.T) {
 		src  S
 		want string
 	}{
-		{ S{ Name: "test_name", }, "test_name", },
-		{ S{ Id:   "test_id", },   "test_id", },
-		{ S{ Ip:   "test_ip", },   "test_ip", },
+		{ S{ Name: "test_name" }, "test_name" },
+		{ S{ Id:   "test_id" },   "test_id" },
+		{ S{ Ip:   "test_ip" },   "test_ip" },
 	}
 
 	for _, test := range tests {

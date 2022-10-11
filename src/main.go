@@ -99,7 +99,7 @@ func main() {
 		}(),
 	}
 
-	processor := proc.Proc{ Providers: provs, }
+	processor := proc.Proc{ Providers: provs }
 	taskCh := processor.Run()
 
 	docker := docker.New(opts.Docker.Host, opts.Docker.Network)
