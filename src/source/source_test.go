@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestString(t *testing.T) {
+func TestStringer(t *testing.T) {
 	tests := []struct{
 		src  S
 		want string
@@ -20,4 +20,18 @@ func TestString(t *testing.T) {
 	for _, test := range tests {
 		assert.Equal(t, test.want, fmt.Sprint(test.src))
 	}
+}
+
+func TestMap(t *testing.T) {
+	testSrc := S{
+		Name: "test_name",
+		Ip:   "test_ip",
+		Id:   "test_id",
+	}
+
+	m := testSrc.Map()
+
+	assert.Equal(t, testSrc.Name, m["name"])
+	assert.Equal(t, testSrc.Ip,   m["ip"])
+	assert.Equal(t, testSrc.Id,   m["id"])
 }

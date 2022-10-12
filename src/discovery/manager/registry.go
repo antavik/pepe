@@ -31,9 +31,28 @@ func (r *Registry) Put(key string, src *source.S) {
 	r.mapping[key] = src
 }
 
-func (r *Registry) Del(key string) {
+func (r *Registry) Del(key string) *source.S {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	delete(r.mapping, key)
+	src, ok := r.mapping[key]
+
+	if ok {
+		delete(r.mapping, key)
+	}
+
+	return src
+}
+
+func (r *Registry) List() []*source.S {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var l []*source.S
+
+	for _, src := range r.mapping {
+		l = append(l, src)
+	}
+
+	return l
 }

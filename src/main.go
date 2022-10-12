@@ -115,6 +115,7 @@ func main() {
 		Version:          version,
 		TaskCh:           taskCh,
 		CommonConf:       config,
+		SrcManager:       srcMan,
 	}
 	server.Run(context.Background())
 }

@@ -14,7 +14,7 @@ type Manager struct {
 	TaskCh     chan *proc.Task
 	CommonConf config.C
 
-	registry   *Registry
+	harvestersReg *Registry
 }
 
 func New(d *docker.Docker, tCh chan *proc.Task, commonC config.C) *Manager {
@@ -23,7 +23,7 @@ func New(d *docker.Docker, tCh chan *proc.Task, commonC config.C) *Manager {
 		TaskCh:     tCh,
 		CommonConf: commonC,
 
-		registry:   NewRegistry(),
+		harvestersReg: NewRegistry(),
 	}
 }
 
@@ -33,23 +33,17 @@ func (m *Manager) Run(ctx context.Context) {
 
 func (m *Manager) listenDocker(ctx context.Context) {
 	for container := range m.Docker.Listen(ctx) {
-		if container.State != "running" || container.Id == "" {
+		_, harvesting := m.harvestersReg.Get(container.Id)
+		if harvesting {
 			continue
 		}
 
-		src, exists := m.registry.Get(container.Id)
-		if exists {
-			continue
-		}
-
-		src = &source.S{
+		src := source.S{
 			Id:     container.Id,
 			Ip:     container.Ip,
 			Name:   container.Name,
 			Config: config.MakeContainerConfig(container.Name, m.CommonConf, container.Labels),
 		}
-
-		m.registry.Put(src.Id, src)
 
 		if src.Config.Stdout || src.Config.Stderr {
 			go m.harvest(src)
@@ -57,17 +51,22 @@ func (m *Manager) listenDocker(ctx context.Context) {
 	}
 }
 
-func (m *Manager) harvest(s *source.S) {
+func (m *Manager) harvest(s source.S) {
+	m.harvestersReg.Put(s.Id, &s)
+	defer m.harvestersReg.Del(s.Id)
+
 	for log := range m.Docker.FollowLogs(s.Id, s.Config.Stdout, s.Config.Stderr) {
 		if s.Config.Re != nil && !s.Config.Re.MatchString(log) {
 			continue
 		}
 
 		m.TaskCh <- &proc.Task{
-			Src:    s,
+			Src:    &s,
 			RawLog: map[string]string{"": log},
 		}
 	}
+}
 
-	m.registry.Del(s.Id)
+func (m *Manager) List() []*source.S {
+	return m.harvestersReg.List()
 }

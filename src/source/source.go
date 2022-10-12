@@ -25,3 +25,11 @@ func (s S) String() string {
 
 	return src
 }
+
+func (s *S) Map() map[string]string {
+	return map[string]string{
+		"id":   s.Id,
+		"ip":   s.Ip,
+		"name": s.Name,
+	}
+}

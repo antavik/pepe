@@ -41,17 +41,20 @@ func TestDel(t *testing.T) {
 		r := NewRegistry()
 		r.Put("key", src)
 
-		r.Del("key")
+		testSrc := r.Del("key")
 
-		testSrc, exists := r.Get("key")
+		assert.NotNil(t, testSrc, "should return nil")
+
+		_, exists := r.Get("key")
 
 		assert.False(t, exists)
-		assert.Nil(t, testSrc, "should return nil")
 	}
 	// del from empty registry
 	{
 		r := NewRegistry()
 
-		r.Del("key")
+		testSrc := r.Del("key")
+
+		assert.Nil(t, testSrc)
 	}
 }

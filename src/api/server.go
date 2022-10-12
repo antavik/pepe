@@ -15,6 +15,7 @@ import (
 	"github.com/antibantique/pepe/src/proc"
 	"github.com/antibantique/pepe/src/config"
 	"github.com/antibantique/pepe/src/source"
+	"github.com/antibantique/pepe/src/discovery/manager"
 )
 
 type Server struct {
@@ -24,6 +25,7 @@ type Server struct {
 	Version          string
 	TaskCh           chan *proc.Task
 	CommonConf       config.C
+	SrcManager       *manager.Manager
 
 	httpServer       *http.Server
 }
@@ -44,6 +46,7 @@ func (s *Server) Run(ctx context.Context) {
 
 	handler := http.NewServeMux()
 	handler.HandleFunc("/log", s.log)
+	handler.HandleFunc("/info", s.info)
 
 	h := rest.Wrap(
 		handler,
@@ -101,4 +104,20 @@ func (s *Server) log(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	rest.RenderJSON(w, rest.JSON{"status": "ok"})
+}
+
+func (s *Server) info(w http.ResponseWriter, r *http.Request) {
+	srcs := []map[string]string{}
+
+	for _, src := range s.SrcManager.List() {
+		srcs = append(srcs, src.Map())
+	}
+
+	j := rest.JSON{
+		"harvesting": srcs,
+		"telegram":   s.CommonConf.TgEnabled,
+		"slack":      s.CommonConf.SlEnabled,
+	}
+
+	rest.RenderJSON(w, j)
 }

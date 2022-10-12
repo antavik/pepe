@@ -40,8 +40,8 @@ func New(host, net string) *Docker {
 	}
 }
 
-func (d *Docker) Listen(ctx context.Context) chan ContainerInfo {
-	events := make(chan ContainerInfo)
+func (d *Docker) Listen(ctx context.Context) chan *ContainerInfo {
+	events := make(chan *ContainerInfo)
 
 	go func() {
 		if err := d.listen(ctx, events); err != nil {
@@ -52,7 +52,7 @@ func (d *Docker) Listen(ctx context.Context) chan ContainerInfo {
 	return events
 }
 
-func (d *Docker) listen(ctx context.Context, events chan ContainerInfo) error {
+func (d *Docker) listen(ctx context.Context, events chan *ContainerInfo) error {
 	ticker := time.NewTicker(d.refresh)
 
 	defer ticker.Stop()
@@ -136,8 +136,8 @@ func NewDockerClient(host, network string) *dockerClient {
 	return &dockerClient{client, network}
 }
 
-func (dc *dockerClient) ListContainers() ([]ContainerInfo, error) {
-	url := fmt.Sprintf("http://localhost/%s/containers/json?all=true", apiVer)
+func (dc *dockerClient) ListContainers() ([]*ContainerInfo, error) {
+	url := fmt.Sprintf("http://localhost/%s/containers/json", apiVer)
 	resp, err := dc.client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to docker socket to fetch containers info: %v", err)
@@ -174,7 +174,7 @@ func (dc *dockerClient) ListContainers() ([]ContainerInfo, error) {
 		return nil, fmt.Errorf("failed to parse response from docker daemon: %v", err)
 	}
 
-	containers := make([]ContainerInfo, len(response))
+	containers := make([]*ContainerInfo, len(response))
 
 	for i, resp := range response {
 		c := ContainerInfo{}
@@ -196,7 +196,7 @@ func (dc *dockerClient) ListContainers() ([]ContainerInfo, error) {
 			c.Ports = append(c.Ports, p.PrivatePort)
 		}
 
-		containers[i] = c
+		containers[i] = &c
 	}
 
 	return containers, nil
