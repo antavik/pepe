@@ -62,7 +62,6 @@ func main() {
 
 	p := flags.NewParser(&opts, flags.PrintErrors|flags.HelpFlag)
 	if _, err := p.Parse(); err != nil {
-		fmt.Println(err)
 		os.Exit(2)
 	}
 
