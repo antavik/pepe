@@ -25,11 +25,15 @@ import (
 )
 
 var opts struct {
-	Port             int    `short:"p" long:"port" default:"9393" description:"port to listen"`
-	MaxSize          string `long:"max" env:"MAX_SIZE" default:"128K" description:"max request size"`
-	StdOutLogEnbaled bool   `long:"stdout" env:"STDOUT" description:"stdout log"`
-	Template         string `long:"template" env:"MSG_TEMPLATE" default:"🔴 Alert\n{{ . }}" description:"message template"`
-	Regex            string `long:"regex" env:"REGEX" default:"ERROR|CRITICAL|FATAL" description:"regex pattern"`
+	Template string `long:"template" env:"MSG_TEMPLATE" default:"🔴 Alert\n{{ . }}" description:"provider message template"`
+	Regex    string `long:"regex" env:"REGEX" default:"ERROR|CRITICAL|FATAL" description:"log regex pattern"`
+	Dbg bool `long:"debug" env:"DEBUG" description:"debug mode"`
+
+	Api struct {
+		Port             int    `short:"p" long:"port" default:"9393" description:"api port to listen"`
+		MaxSize          string `long:"max" env:"MAX_SIZE" default:"128K" description:"api max request size"`
+		StdOutLogEnbaled bool   `long:"stdout" env:"STDOUT_LOG" description:"api stdout log"`
+	} `group:"api" namespace:"api" env-namespace:"API"`
 
 	Docker struct {
 		Host    string `long:"host" env:"HOST" default:"unix:///var/run/docker.sock" description:"docker host"`
@@ -49,8 +53,6 @@ var opts struct {
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"1m" description:"slack timeout"`
 		ChatId  string        `long:"chat" env:"CHAT" description:"slack chat id"`
 	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
-
-	Dbg bool `long:"debug" env:"DEBUG" description:"debug mode"`
 }
 
 var version = "development"
@@ -66,7 +68,7 @@ func main() {
 
 	setupLog()
 
-	maxSize, err := parseSize(opts.MaxSize)
+	maxSize, err := parseSize(opts.Api.MaxSize)
 	if err != nil {
 		log.Printf("[FATAL] invalid max body size value: %v", err)
 	}
@@ -109,9 +111,9 @@ func main() {
 
 	// setup and run api server
 	server := api.Server{
-		Port:             opts.Port,
+		Port:             opts.Api.Port,
 		MaxBodySize:      int64(maxSize),
-		StdOutLogEnbaled: opts.StdOutLogEnbaled,
+		StdOutLogEnbaled: opts.Api.StdOutLogEnbaled,
 		Version:          version,
 		TaskCh:           taskCh,
 		CommonConf:       config,
