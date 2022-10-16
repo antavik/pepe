@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/antibantique/pepe/src/proc"
 	"github.com/antibantique/pepe/src/config"
@@ -14,7 +15,7 @@ type Manager struct {
 	TaskCh     chan *proc.Task
 	CommonConf config.C
 
-	harvestersReg *Registry
+	reg *Registry
 }
 
 func New(d *docker.Docker, tCh chan *proc.Task, commonC config.C) *Manager {
@@ -23,8 +24,12 @@ func New(d *docker.Docker, tCh chan *proc.Task, commonC config.C) *Manager {
 		TaskCh:     tCh,
 		CommonConf: commonC,
 
-		harvestersReg: NewRegistry(),
+		reg: NewRegistry(),
 	}
+}
+
+func (m *Manager) List() []*source.S {
+	return m.reg.List()
 }
 
 func (m *Manager) Run(ctx context.Context) {
@@ -33,8 +38,8 @@ func (m *Manager) Run(ctx context.Context) {
 
 func (m *Manager) listenDocker(ctx context.Context) {
 	for container := range m.Docker.Listen(ctx) {
-		_, harvesting := m.harvestersReg.Get(container.Id)
-		if harvesting {
+		_, exists := m.reg.Get(container.Id)
+		if exists {
 			continue
 		}
 
@@ -52,21 +57,26 @@ func (m *Manager) listenDocker(ctx context.Context) {
 }
 
 func (m *Manager) harvest(s source.S) {
-	m.harvestersReg.Put(s.Id, &s)
-	defer m.harvestersReg.Del(s.Id)
+	m.reg.Put(s.Id, &s)
+	defer m.reg.Del(s.Id)
 
-	for log := range m.Docker.FollowLogs(s.Id, s.Config.Stdout, s.Config.Stderr) {
-		if s.Config.Re != nil && !s.Config.Re.MatchString(log) {
+	for l := range m.Docker.FollowLogs(s.Id, s.Config.Stdout, s.Config.Stderr) {
+		if l.Err != nil {
+			m.TaskCh <- &proc.Task{
+				Src:    &s,
+				RawLog: map[string]string{
+					"pepe" : fmt.Sprintf("Error while streaming docker logs: %v", l.Err),
+				},
+			}
+		}
+
+		if s.Config.Re != nil && !s.Config.Re.MatchString(l.Text) {
 			continue
 		}
 
 		m.TaskCh <- &proc.Task{
 			Src:    &s,
-			RawLog: map[string]string{"": log},
+			RawLog: map[string]string{"": l.Text},
 		}
 	}
-}
-
-func (m *Manager) List() []*source.S {
-	return m.harvestersReg.List()
 }

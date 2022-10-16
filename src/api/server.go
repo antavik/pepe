@@ -114,9 +114,9 @@ func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	}
 
 	j := rest.JSON{
-		"harvesting": srcs,
-		"telegram":   s.CommonConf.TgEnabled,
-		"slack":      s.CommonConf.SlEnabled,
+		"listening": srcs,
+		"telegram":  s.CommonConf.TgEnabled,
+		"slack":     s.CommonConf.SlEnabled,
 	}
 
 	rest.RenderJSON(w, j)

@@ -13,6 +13,8 @@ import (
 	"bufio"
 
 	log "github.com/go-pkgz/lgr"
+
+	"github.com/antibantique/pepe/src/discovery"
 )
 
 // source from https://github.com/umputun/reproxy
@@ -40,8 +42,8 @@ func New(host, net string) *Docker {
 	}
 }
 
-func (d *Docker) Listen(ctx context.Context) chan ContainerInfo {
-	events := make(chan ContainerInfo)
+func (d *Docker) Listen(ctx context.Context) chan *ContainerInfo {
+	events := make(chan *ContainerInfo)
 
 	go func() {
 		if err := d.listen(ctx, events); err != nil {
@@ -52,7 +54,7 @@ func (d *Docker) Listen(ctx context.Context) chan ContainerInfo {
 	return events
 }
 
-func (d *Docker) listen(ctx context.Context, events chan ContainerInfo) error {
+func (d *Docker) listen(ctx context.Context, events chan *ContainerInfo) error {
 	ticker := time.NewTicker(d.refresh)
 
 	defer ticker.Stop()
@@ -81,16 +83,16 @@ func (d *Docker) listen(ctx context.Context, events chan ContainerInfo) error {
 	}
 }
 
-func (d *Docker) FollowLogs(contId string, stdout, stderr bool) chan string {
+func (d *Docker) FollowLogs(contId string, stdout, stderr bool) chan *discovery.Log {
 	follow := true
 
 	stream, err := d.client.Logs(contId, follow, stdout, stderr)
 	if err != nil {
-		log.Printf("[ERROR] docker api error, %v", err)
+		log.Printf("[ERROR] docker api error: %v", err)
 		return nil
 	}
 
-	logCh := make(chan string)
+	logCh := make(chan *discovery.Log)
 
 	go func() {
 		log.Printf("[DEBUG] start following logs of container %s", contId)
@@ -100,10 +102,11 @@ func (d *Docker) FollowLogs(contId string, stdout, stderr bool) chan string {
 
 		s := bufio.NewScanner(NewLogReader(stream))
 		for s.Scan() {
-			logCh <- s.Text()
+			logCh <- &discovery.Log{ s.Text(), nil }
 		}
 		if err := s.Err(); err != nil {
-			log.Printf("[ERROR] docker logs streaming, %v", err)
+			logCh <- &discovery.Log{ "", err }
+			log.Printf("[ERROR] stop streaming docker logs: %v", err)
 		}
 
 		log.Printf("[DEBUG] stop following logs of container %s", contId)
@@ -136,7 +139,7 @@ func NewDockerClient(host, network string) *dockerClient {
 	return &dockerClient{client, network}
 }
 
-func (dc *dockerClient) ListContainers() ([]ContainerInfo, error) {
+func (dc *dockerClient) ListContainers() ([]*ContainerInfo, error) {
 	url := fmt.Sprintf("http://localhost/%s/containers/json", apiVer)
 	resp, err := dc.client.Get(url)
 	if err != nil {
@@ -174,7 +177,7 @@ func (dc *dockerClient) ListContainers() ([]ContainerInfo, error) {
 		return nil, fmt.Errorf("failed to parse response from docker daemon: %v", err)
 	}
 
-	containers := make([]ContainerInfo, len(response))
+	containers := make([]*ContainerInfo, len(response))
 
 	for i, resp := range response {
 		c := ContainerInfo{}
@@ -196,7 +199,7 @@ func (dc *dockerClient) ListContainers() ([]ContainerInfo, error) {
 			c.Ports = append(c.Ports, p.PrivatePort)
 		}
 
-		containers[i] = c
+		containers[i] = &c
 	}
 
 	return containers, nil
