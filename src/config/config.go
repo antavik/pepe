@@ -11,22 +11,26 @@ import (
 )
 
 type C struct {
-	Template  *template.Template
-	TgEnabled bool
-	SlEnabled bool
-	Stdout    bool
-	Stderr    bool
-	Re        *regexp.Regexp
+	TemplateRaw string
+	Template    *template.Template
+	TgEnabled   bool
+	SlEnabled   bool
+	Stdout      bool
+	Stderr      bool
+	ReRaw       string
+	Re          *regexp.Regexp
 }
 
 func MakeContainerConfig(name string, commonConf C, labels map[string]string) *C {
-	c := &C{
-		Template:  commonConf.Template,
-		TgEnabled: commonConf.TgEnabled,
-		SlEnabled: commonConf.SlEnabled,
-		Stdout:    commonConf.Stdout,
-		Stderr:    commonConf.Stderr,
-		Re:        commonConf.Re,
+	c := C{
+		TemplateRaw: commonConf.TemplateRaw,
+		Template:    commonConf.Template,
+		TgEnabled:   commonConf.TgEnabled,
+		SlEnabled:   commonConf.SlEnabled,
+		Stdout:      commonConf.Stdout,
+		Stderr:      commonConf.Stderr,
+		ReRaw:       commonConf.ReRaw,
+		Re:          commonConf.Re,
 	}
 
 	for k, v := range labels {
@@ -43,6 +47,7 @@ func MakeContainerConfig(name string, commonConf C, labels map[string]string) *C
 				log.Printf("[WARNING] template parse error for %s: %v", name, err)
 				continue
 			}
+			c.TemplateRaw = v
 			c.Template = template
 
 		case "telegram":
@@ -83,9 +88,21 @@ func MakeContainerConfig(name string, commonConf C, labels map[string]string) *C
 				log.Printf("[WARNING] stream_regexp opt parse error for %s: %v", name, err)
 				continue
 			}
+			c.ReRaw = v
 			c.Re = re
 		}
 	}
 
-	return c
+	return &c
+}
+
+func (c *C) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"template": c.TemplateRaw,
+		"telegram": c.TgEnabled,
+		"slack":    c.SlEnabled,
+		"stdout":   c.Stdout,
+		"stderr":   c.Stderr,
+		"regex":    c.ReRaw,
+	}
 }

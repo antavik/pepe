@@ -9,6 +9,8 @@ import (
 
 	tb "gopkg.in/tucnak/telebot.v2"
 	log "github.com/go-pkgz/lgr"
+
+	"github.com/antibantique/pepe/src/source"
 )
 
 type TelegramProvider struct {
@@ -73,6 +75,10 @@ func (tp TelegramProvider) Send(msg string) error {
 	log.Printf("[DEBUG] message sent to telegram")
 
 	return nil
+}
+
+func (sp *TelegramProvider) Accepted(s *source.S) bool {
+	return s.Config.TgEnabled
 }
 
 func (tp TelegramProvider) sendText(channelId, msg string) error {

@@ -21,7 +21,6 @@ import (
 	"github.com/antibantique/pepe/src/providers"
 	"github.com/antibantique/pepe/src/discovery/docker"
 	"github.com/antibantique/pepe/src/discovery/manager"
-	"github.com/antibantique/pepe/src/source"
 )
 
 var opts struct {
@@ -32,7 +31,6 @@ var opts struct {
 	Api struct {
 		Port             int    `short:"p" long:"port" default:"9393" description:"api port to listen"`
 		MaxSize          string `long:"max" env:"MAX_SIZE" default:"128K" description:"api max request size"`
-		StdOutLogEnbaled bool   `long:"stdout" env:"STDOUT_LOG" description:"api stdout log"`
 	} `group:"api" namespace:"api" env-namespace:"API"`
 
 	Docker struct {
@@ -88,13 +86,15 @@ func main() {
 	}
 
 	config := config.C{
-		Template:  template,
-		Re:        regex,
-		TgEnabled: func() bool {
+		TemplateRaw: opts.Template,
+		Template:    template,
+		ReRaw:       opts.Regex,
+		Re:          regex,
+		TgEnabled:   func() bool {
 			_, ok := provs["telegram"]
 			return ok
 		}(),
-		SlEnabled: func() bool {
+		SlEnabled:   func() bool {
 			_, ok := provs["slack"]
 			return ok
 		}(),
@@ -112,7 +112,7 @@ func main() {
 	server := api.Server{
 		Port:             opts.Api.Port,
 		MaxBodySize:      int64(maxSize),
-		StdOutLogEnbaled: opts.Api.StdOutLogEnbaled,
+		StdOutLogEnbaled: opts.Dbg,
 		Version:          version,
 		TaskCh:           taskCh,
 		CommonConf:       config,
@@ -129,8 +129,8 @@ func setupLog() {
 	log.Setup(log.Msec, log.LevelBraces)
 }
 
-func setupProviders() (map[string]*proc.Provider, error) {
-	ps := make(map[string]*proc.Provider)
+func setupProviders() (map[string]providers.P, error) {
+	ps := make(map[string]providers.P)
 
 	// setup telegram client
 	if opts.Tg.Token != "" {
@@ -138,19 +138,13 @@ func setupProviders() (map[string]*proc.Provider, error) {
 		if err != nil {
 			log.Printf("[ERROR] setup telegram client error: %v", err)
 		} else {
-			ps["telegram"] = &proc.Provider{
-				Client: tgProvider,
-				Accept: func(s *source.S) bool { return s.Config.TgEnabled },
-			}
+			ps["telegram"] = tgProvider
 		}
 	}
 
 	// setup slack client
 	if opts.Sl.Token != "" {
-		ps["slack"] = &proc.Provider{
-			Client: providers.NewSlackProvider(opts.Sl.Token, opts.Sl.Server, opts.Sl.ChatId, opts.Sl.Timeout),
-			Accept: func(s *source.S) bool { return s.Config.SlEnabled },
-		}
+		ps["slack"] = providers.NewSlackProvider(opts.Sl.Token, opts.Sl.Server, opts.Sl.ChatId, opts.Sl.Timeout)
 	}
 
 	if len(ps) == 0 {

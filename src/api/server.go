@@ -107,7 +107,7 @@ func (s *Server) log(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) info(w http.ResponseWriter, r *http.Request) {
-	srcs := []map[string]string{}
+	srcs := []map[string]interface{}{}
 
 	for _, src := range s.SrcManager.List() {
 		srcs = append(srcs, src.Map())

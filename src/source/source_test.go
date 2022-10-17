@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/antibantique/pepe/src/config"
 )
 
 func TestStringer(t *testing.T) {
@@ -24,9 +26,10 @@ func TestStringer(t *testing.T) {
 
 func TestMap(t *testing.T) {
 	testSrc := S{
-		Name: "test_name",
-		Ip:   "test_ip",
-		Id:   "test_id",
+		Name:   "test_name",
+		Ip:     "test_ip",
+		Id:     "test_id",
+		Config: &config.C{},
 	}
 
 	m := testSrc.Map()

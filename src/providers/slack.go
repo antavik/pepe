@@ -6,6 +6,8 @@ import (
 
 	sl "github.com/slack-go/slack"
 	log "github.com/go-pkgz/lgr"
+
+	"github.com/antibantique/pepe/src/source"
 )
 
 type SlackProvider struct {
@@ -53,6 +55,10 @@ func (sp *SlackProvider) Send(msg string) error {
 	log.Printf("[DEBUG] message sent to slack")
 
 	return nil
+}
+
+func (sp *SlackProvider) Accepted(s *source.S) bool {
+	return s.Config.SlEnabled
 }
 
 func (sp *SlackProvider) sendText(channelId, msg string) error {

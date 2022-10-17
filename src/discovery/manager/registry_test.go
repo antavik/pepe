@@ -58,3 +58,14 @@ func TestDel(t *testing.T) {
 		assert.Nil(t, testSrc)
 	}
 }
+
+func TestList(t *testing.T) {
+	src := &source.S{ Ip: "0.0.0.0", Config: &config.C{} }
+
+	r := NewRegistry()
+	r.Put("key", src)
+
+	testList := r.List()
+
+	assert.Equal(t, len(testList), 1)
+}

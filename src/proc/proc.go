@@ -4,10 +4,12 @@ import (
 	"sync"
 
 	log "github.com/go-pkgz/lgr"
+
+	"github.com/antibantique/pepe/src/providers"
 )
 
 type Proc struct {
-	Providers map[string]*Provider
+	Providers map[string]providers.P
 }
 
 func (p *Proc) Run() chan *Task {
@@ -29,16 +31,16 @@ func (p *Proc) run(taskCh chan *Task) {
 		}
 
 		for _, prov := range p.Providers {
-			if !prov.Accept(task.Src) {
+			if !prov.Accepted(task.Src) {
 				continue
 			}
 
 			wg.Add(1)
 
-			go func(p *Provider) {
+			go func(pr providers.P) {
 				defer wg.Done()
 
-				if err := p.Client.Send(msg); err != nil {
+				if err := pr.Send(msg); err != nil {
 					log.Printf("[ERROR] error send message, %v", err)
 				}
 			}(prov)

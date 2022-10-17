@@ -75,7 +75,7 @@ func TestFormat(t *testing.T) {
 		formatted, err := Format(task)
 
 		assert.NoError(t, err)
-		assert.True(t, len(formatted) > 0, "should be non-empty sting")
+		assert.NotEmpty(t, formatted, "should be non-empty string")
 	}
 	// invalid template processing
 	{
@@ -87,6 +87,6 @@ func TestFormat(t *testing.T) {
 		formatted, err := Format(task)
 
 		assert.Error(t, err)
-		assert.Empty(t, formatted, "should be empty sting")
+		assert.Empty(t, formatted, "should be empty string")
 	}
 }

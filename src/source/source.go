@@ -26,10 +26,11 @@ func (s S) String() string {
 	return src
 }
 
-func (s *S) Map() map[string]string {
-	return map[string]string{
-		"id":   s.Id,
-		"ip":   s.Ip,
-		"name": s.Name,
+func (s *S) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"id":     s.Id,
+		"ip":     s.Ip,
+		"name":   s.Name,
+		"config": s.Config.Map(),
 	}
 }
