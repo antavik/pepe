@@ -84,23 +84,19 @@ func main() {
 	if err != nil {
 		log.Printf("[FATAL] provider configuration error: %v", err)
 	}
+	_, tgEnabled := provs["telegram"]
+	_, slEnabled := provs["slack"]
 
 	config := config.C{
 		TemplateRaw: opts.Template,
 		Template:    template,
 		ReRaw:       opts.Regex,
 		Re:          regex,
-		TgEnabled:   func() bool {
-			_, ok := provs["telegram"]
-			return ok
-		}(),
-		SlEnabled:   func() bool {
-			_, ok := provs["slack"]
-			return ok
-		}(),
+		TgEnabled:   tgEnabled,
+		SlEnabled:   slEnabled,
 	}
 
-	processor := proc.Proc{ Providers: provs }
+	processor := proc.NewProc(provs)
 	taskCh := processor.Run()
 
 	docker := docker.New(opts.Docker.Host, opts.Docker.Network)

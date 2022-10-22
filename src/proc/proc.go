@@ -9,7 +9,12 @@ import (
 )
 
 type Proc struct {
-	Providers map[string]providers.P
+	Provs map[string]providers.P
+	F     func(*Task) (string, error)
+}
+
+func NewProc(provs map[string]providers.P) *Proc {
+	return &Proc{ provs, Format }
 }
 
 func (p *Proc) Run() chan *Task {
@@ -24,13 +29,13 @@ func (p *Proc) run(taskCh chan *Task) {
 	var wg sync.WaitGroup
 
 	for task := range taskCh {
-		msg, err := Format(task)
+		msg, err := p.F(task)
 		if err != nil {
 			log.Printf("[WARN] message format error, %v", err)
 			continue
 		}
 
-		for _, prov := range p.Providers {
+		for _, prov := range p.Provs {
 			if !prov.Accepted(task.Src) {
 				continue
 			}
