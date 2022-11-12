@@ -2,56 +2,54 @@ package manager
 
 import (
 	"sync"
-
-	"github.com/antibantique/pepe/src/source"
 )
 
 type Registry struct {
-	mapping map[string]*source.S
+	mapping map[string]Harvester
 	mu      sync.RWMutex
 }
 
 func NewRegistry() *Registry {
-	return &Registry{mapping: make(map[string]*source.S)}
+	return &Registry{ mapping: make(map[string]Harvester) }
 }
 
-func (r *Registry) Get(key string) (src *source.S, ok bool) {
+func (r *Registry) Get(key string) (Harvester, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	src, ok = r.mapping[key]
+	harv, ok := r.mapping[key]
 
-	return src, ok
+	return harv, ok
 }
 
-func (r *Registry) Put(key string, src *source.S) {
+func (r *Registry) Put(key string, harv Harvester) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.mapping[key] = src
+	r.mapping[key] = harv
 }
 
-func (r *Registry) Del(key string) *source.S {
+func (r *Registry) Del(key string) Harvester {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	src, ok := r.mapping[key]
+	harv, ok := r.mapping[key]
 
 	if ok {
 		delete(r.mapping, key)
 	}
 
-	return src
+	return harv
 }
 
-func (r *Registry) List() []*source.S {
+func (r *Registry) List() []Harvester {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var l []*source.S
+	var l []Harvester
 
-	for _, src := range r.mapping {
-		l = append(l, src)
+	for _, harv := range r.mapping {
+		l = append(l, harv)
 	}
 
 	return l

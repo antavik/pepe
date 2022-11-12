@@ -11,6 +11,8 @@ import (
 	"math"
 	"text/template"
 	"regexp"
+	"os/signal"
+	"syscall"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
@@ -80,6 +82,22 @@ func main() {
 		log.Printf("[FATAL] invalid regex pattern: %v", err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		if x := recover(); x != nil {
+			log.Printf("[WARN] run time panic:\n%v", x)
+			panic(x)
+		}
+
+		// catch signal and invoke graceful termination
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		<-stop
+		log.Printf("[WARN] interrupt signal")
+		cancel()
+	}()
+
 	provs, err := setupProviders()
 	if err != nil {
 		log.Printf("[FATAL] provider configuration error: %v", err)
@@ -97,14 +115,15 @@ func main() {
 	}
 
 	processor := proc.NewProc(provs)
-	taskCh := processor.Run()
+	taskCh := processor.Run(ctx)
+	defer close(taskCh)
 
-	docker := docker.New(opts.Docker.Host, opts.Docker.Network)
+	doc := docker.New(opts.Docker.Host, opts.Docker.Network)
 
-	srcMan := manager.New(docker, taskCh, config)
-	srcMan.Run(context.Background())
+	man := manager.New(doc, taskCh, config)
+	man.Run(ctx)
+	defer man.Stop()
 
-	// setup and run api server
 	server := api.Server{
 		Port:             opts.Api.Port,
 		MaxBodySize:      int64(maxSize),
@@ -112,9 +131,9 @@ func main() {
 		Version:          version,
 		TaskCh:           taskCh,
 		CommonConf:       config,
-		SrcManager:       srcMan,
+		Manager:          man,
 	}
-	server.Run(context.Background())
+	server.Run(ctx)
 }
 
 func setupLog() {

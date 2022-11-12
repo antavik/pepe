@@ -25,7 +25,7 @@ type Server struct {
 	Version          string
 	TaskCh           chan *proc.Task
 	CommonConf       config.C
-	SrcManager       *manager.Manager
+	Manager          *manager.Manager
 
 	httpServer       *http.Server
 }
@@ -109,8 +109,8 @@ func (s *Server) log(w http.ResponseWriter, r *http.Request) {
 func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	srcs := []map[string]interface{}{}
 
-	for _, src := range s.SrcManager.List() {
-		srcs = append(srcs, src.Map())
+	for _, harv := range s.Manager.List() {
+		srcs = append(srcs, harv.Source.Map())
 	}
 
 	j := rest.JSON{

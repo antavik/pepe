@@ -2,6 +2,7 @@ package proc
 
 import (
 	"testing"
+	"context"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,13 +11,15 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	ctx := context.Background()
+
 	fp := providers.FakeProvider{}
 	p := Proc{
 		Provs: map[string]providers.P{ "": &fp },
 		F:     func(_ *Task) (string, error) { return "", nil },
 	}
 
-	tCh := p.Run()
+	tCh := p.Run(ctx)
 	defer close(tCh)
 
 	require.NotNil(t, tCh)

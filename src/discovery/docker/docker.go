@@ -47,7 +47,7 @@ func (d *Docker) Listen(ctx context.Context) chan *ContainerInfo {
 
 	go func() {
 		if err := d.listen(ctx, events); err != nil {
-			log.Printf("[ERROR] unexpected docker client exit, %v", err)
+			log.Printf("[WARN] unexpected docker client exit, %v", err)
 		}
 	}()
 
@@ -56,9 +56,7 @@ func (d *Docker) Listen(ctx context.Context) chan *ContainerInfo {
 
 func (d *Docker) listen(ctx context.Context, events chan *ContainerInfo) error {
 	ticker := time.NewTicker(d.refresh)
-
 	defer ticker.Stop()
-	defer close(events)
 
 	update := func() {
 		containers, err := d.client.ListContainers()
@@ -78,15 +76,14 @@ func (d *Docker) listen(ctx context.Context, events chan *ContainerInfo) error {
 		case <-ticker.C:
 			update()
 		case <-ctx.Done():
+			close(events)
 			return ctx.Err()
 		}
 	}
 }
 
-func (d *Docker) FollowLogs(contId string, stdout, stderr bool) chan *discovery.Log {
-	follow := true
-
-	stream, err := d.client.Logs(contId, follow, stdout, stderr)
+func (d *Docker) FollowLogs(ctx context.Context, contId string, stdout, stderr bool) chan *discovery.Log {
+	stream, err := d.client.Logs(contId, true, stdout, stderr)
 	if err != nil {
 		log.Printf("[ERROR] docker api error: %v", err)
 		return nil
@@ -95,19 +92,23 @@ func (d *Docker) FollowLogs(contId string, stdout, stderr bool) chan *discovery.
 	logCh := make(chan *discovery.Log)
 
 	go func() {
-		log.Printf("[DEBUG] start following logs of container %s", contId)
+		<-ctx.Done()
+		stream.Close()
+	}()
 
-		defer stream.Close()
-		defer close(logCh)
+	go func() {
+		log.Printf("[DEBUG] start following logs of container %s", contId)
 
 		s := bufio.NewScanner(NewLogReader(stream))
 		for s.Scan() {
 			logCh <- &discovery.Log{ s.Text(), nil }
 		}
 		if err := s.Err(); err != nil {
-			logCh <- &discovery.Log{ "", err }
-			log.Printf("[ERROR] stop streaming docker logs: %v", err)
+			log.Printf("[WARN] stop streaming docker logs: %v", err)
 		}
+
+		stream.Close()
+		close(logCh)
 
 		log.Printf("[DEBUG] stop following logs of container %s", contId)
 	}()

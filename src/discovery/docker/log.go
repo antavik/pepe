@@ -61,17 +61,6 @@ func (r *reader) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func (r *reader) readLog(p []byte) (int, error) {
-	if r.cursor >= r.logLen {
-		return 0, io.EOF
-	}
-
-	n := copy(p, r.buf[r.cursor:r.logLen])
-	r.cursor += n
-
-	return n, nil
-}
-
 func (r *reader) parse() error {
 	if n, err := io.ReadFull(r.r, r.headerBuf); err != nil {
 		switch err {
@@ -108,4 +97,15 @@ func (r *reader) parse() error {
 	r.cursor = 0 // reset cursors for the new message
 
 	return nil
+}
+
+func (r *reader) readLog(p []byte) (int, error) {
+	if r.cursor >= r.logLen {
+		return 0, io.EOF
+	}
+
+	n := copy(p, r.buf[r.cursor:r.logLen])
+	r.cursor += n
+
+	return n, nil
 }

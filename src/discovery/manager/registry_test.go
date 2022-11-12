@@ -2,6 +2,7 @@ package manager
 
 import (
 	"testing"
+	"context"
 
 	"github.com/stretchr/testify/assert"
 
@@ -12,15 +13,16 @@ import (
 func TestGet(t *testing.T) {
 	// get by valid key
 	{
-		src := &source.S{ Ip: "0.0.0.0", Config: &config.C{} }
+		_, cancel := context.WithCancel(context.Background())
+		h := Harvester{ source.S{ Ip: "0.0.0.0", Config: &config.C{} }, cancel }
 
 		r := NewRegistry()
-		r.Put("key", src)
+		r.Put("key", h)
 
-		testSrc, exists := r.Get("key")
+		testHarv, exists := r.Get("key")
 
 		assert.True(t, exists)
-		assert.Same(t, src, testSrc, "should return pointer to saved service")
+		assert.NotNil(t, testHarv)
 	}
 	// get by invalid key
 	{
@@ -29,21 +31,22 @@ func TestGet(t *testing.T) {
 		testSrc, exists := r.Get("key")
 
 		assert.False(t, exists)
-		assert.Nil(t, testSrc, "should return nil")
+		assert.Empty(t, testSrc, "should return nil")
 	}
 }
 
 func TestDel(t *testing.T) {
 	// del valid key
 	{
-		src := &source.S{ Ip: "0.0.0.0", Config: &config.C{} }
+		_, cancel := context.WithCancel(context.Background())
+		h := Harvester{ source.S{ Ip: "0.0.0.0", Config: &config.C{} }, cancel }
 
 		r := NewRegistry()
-		r.Put("key", src)
+		r.Put("key", h)
 
-		testSrc := r.Del("key")
+		testHarv := r.Del("key")
 
-		assert.NotNil(t, testSrc, "should return nil")
+		assert.NotNil(t, testHarv)
 
 		_, exists := r.Get("key")
 
@@ -53,17 +56,18 @@ func TestDel(t *testing.T) {
 	{
 		r := NewRegistry()
 
-		testSrc := r.Del("key")
+		testHarv := r.Del("key")
 
-		assert.Nil(t, testSrc)
+		assert.Empty(t, testHarv)
 	}
 }
 
 func TestList(t *testing.T) {
-	src := &source.S{ Ip: "0.0.0.0", Config: &config.C{} }
+	_, cancel := context.WithCancel(context.Background())
+	h := Harvester{ source.S{ Ip: "0.0.0.0", Config: &config.C{} }, cancel }
 
 	r := NewRegistry()
-	r.Put("key", src)
+	r.Put("key", h)
 
 	testList := r.List()
 
