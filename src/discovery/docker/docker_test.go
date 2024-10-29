@@ -16,7 +16,7 @@ import (
 func TestListContainers(t *testing.T) {
 	{
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/v1.22/containers/json", r.URL.Path)
+			require.Equal(t, "/v1.24/containers/json", r.URL.Path)
 
 			http.Error(w, `{"message": "error"}`, http.StatusInternalServerError)
 		}))
@@ -31,7 +31,7 @@ func TestListContainers(t *testing.T) {
 	}
 	{
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/v1.22/containers/json", r.URL.Path)
+			require.Equal(t, "/v1.24/containers/json", r.URL.Path)
 
 			resp, err := os.ReadFile("testdata/containers.json")
 			require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestListContainers(t *testing.T) {
 func TestLogs(t *testing.T) {
 	{
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/v1.22/containers/test/logs", r.URL.Path)
+			require.Equal(t, "/v1.24/containers/test/logs", r.URL.Path)
 			require.True(t, strings.Contains(r.URL.RawQuery, "follow=true&stdout=true&stderr=true&since="))
 
 			http.Error(w, `{"message": "error"}`, http.StatusInternalServerError)
@@ -75,7 +75,7 @@ func TestLogs(t *testing.T) {
 	}
 	{
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/v1.22/containers/test/logs", r.URL.Path)
+			require.Equal(t, "/v1.24/containers/test/logs", r.URL.Path)
 			require.True(t, strings.Contains(r.URL.RawQuery, "follow=true&stdout=true&stderr=true&since="))
 
 			resp, err := os.ReadFile("testdata/log")

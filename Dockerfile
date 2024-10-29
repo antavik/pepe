@@ -1,5 +1,5 @@
 # build
-FROM golang:1.18-alpine as build
+FROM golang:1.18-alpine AS build
 
 ENV CGO_ENABLED=0
 
@@ -9,7 +9,7 @@ WORKDIR /build
 RUN cd src && go build -o /build/pepe -ldflags "-X main.version=beta -s -w"
 
 # base
-FROM ghcr.io/umputun/baseimage/app:v1.9.1 as base
+FROM ghcr.io/umputun/baseimage/app:v1.14.0 AS base
 
 # run
 FROM scratch

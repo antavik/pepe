@@ -18,7 +18,7 @@ import (
 )
 
 // source from https://github.com/umputun/reproxy
-const apiVer = "v1.22"
+const apiVer = "v1.24"
 
 type Docker struct {
 	client  *dockerClient
